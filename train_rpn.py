@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-# stuff
 from __future__ import division
 import random
 import pprint
@@ -7,10 +6,10 @@ import keras
 import sys
 import time
 import numpy as np
-from optparse import OptionParser
 import pickle
 import os
 
+import tensorflow as tf
 from keras import backend as K
 from keras.optimizers import Adam, SGD, RMSprop
 from keras.layers import Input
@@ -20,38 +19,18 @@ from keras_frcnn import config
 from keras_frcnn import losses as losses
 import keras_frcnn.roi_helpers as roi_helpers
 from keras.utils import generic_utils
-
-# gpu setting
-if 'tensorflow' == K.backend():
-    import tensorflow as tf
 from keras.backend.tensorflow_backend import set_session
+
 config2 = tf.ConfigProto()
 config2.gpu_options.allow_growth = True
 set_session(tf.Session(config=config2))
 
-# command arg example
-#--network mobilenetv1 -o simple -p ../../datasets/small_kitti_obj/kitti_train.txt
-
-# option parsar
-parser = OptionParser()
-parser.add_option("-p", "--path", dest="train_path", help="Path to training data.")
-parser.add_option("-o", "--parser", dest="parser", help="Parser to use. One of simple or pascal_voc",
-				default="pascal_voc")
-parser.add_option("-n", "--num_rois", type="int", dest="num_rois", help="Number of RoIs to process at once.", default=10)
-parser.add_option("--network", dest="network", help="Base network to use. Supports vgg or resnet50.", default='vgg19')
-parser.add_option("--hf", dest="horizontal_flips", help="Augment with horizontal flips in training. (Default=false).", action="store_true", default=False)
-parser.add_option("--vf", dest="vertical_flips", help="Augment with vertical flips in training. (Default=false).", action="store_true", default=False)
-parser.add_option("--rot", "--rot_90", dest="rot_90", help="Augment with 90 degree rotations in training. (Default=false).",
-				  action="store_true", default=False)
-parser.add_option("--num_epochs", type="int", dest="num_epochs", help="Number of epochs.", default=50)
-parser.add_option("--config_filename", dest="config_filename", help=
-				"Location to store all the metadata related to the training (to be used when testing).",
-				default="config.pickle")
-parser.add_option("--elen", dest="epoch_length", help="set the epoch length. def=1000", type="int", default=1000)
-parser.add_option("--output_weight_path", dest="output_weight_path", help="Output path for weights.", default='./model_frcnn.hdf5')
-parser.add_option("--input_weight_path", dest="input_weight_path", help="Input path for weights. If not specified, will try to load default weights provided by keras.")
-
-(options, args) = parser.parse_args()
+para = {'train_path': 'C:\\Users\\kctoa\\Desktop\\VScode\\frcnn-from-scratch-with-keras\\VOCdevkit', 
+		'input_weight_path': 'C:\\Users\\kctoa\\Desktop\\VScode\\frcnn-from-scratch-with-keras\\pretrain\\mobilenet_1_0_224_tf.h5',
+		'output_weight_path': './model_frcnn.hdf5',
+		'horizontal_flips': False, 'vertical_flips': False, 'rot_90': False, 		
+		'input_size': 300, 'parser': 'pascal_voc', 'config_filename': 'config.pickle', 
+		'network': 'mobilenetv1', 'num_rois': 3, 'num_epochs': 10, 'epoch_length': 10}
 
 # make dirs to save rpn
 # "./models/rpn/rpn"
@@ -62,13 +41,13 @@ if not os.path.isdir("models/rpn"):
 
 # we will train from pascal voc 2007
 # you have to pass the directory of VOC with -p
-if not options.train_path:   # if filename is not given
-	parser.error('Error: path to training data must be specified. Pass --path to command line')
+if not para['train_path']:   # if filename is not given
+    raise ValueError('Error: Path to training data must be specified.')
 
-if options.parser == 'pascal_voc':
-	from keras_frcnn.pascal_voc_parser import get_data
-elif options.parser == 'simple':
-	from keras_frcnn.simple_parser import get_data
+if para['parser'] == 'pascal_voc':
+    from keras_frcnn.pascal_voc_parser import get_data
+elif para['parser'] == 'simple':
+    from keras_frcnn.simple_parser import get_data
 else:
 	raise ValueError("Command line option parser must be one of 'pascal_voc' or 'simple'")
 
@@ -76,46 +55,47 @@ else:
 C = config.Config()
 
 # set data argumentation
-C.use_horizontal_flips = bool(options.horizontal_flips)
-C.use_vertical_flips = bool(options.vertical_flips)
-C.rot_90 = bool(options.rot_90)
+C.use_horizontal_flips = bool(para['horizontal_flips'])
+C.use_vertical_flips = bool(para['vertical_flips'])
+C.rot_90 = bool(para['rot_90'])
 
-C.model_path = options.output_weight_path
-C.num_rois = int(options.num_rois)
+C.model_path = para['output_weight_path']
+C.num_rois = int(para['num_rois'])
 
 # we will use resnet. may change to vgg
-if options.network == 'vgg':
-	C.network = 'vgg16'
-	from keras_frcnn import vgg as nn
-elif options.network == 'resnet50':
-	from keras_frcnn import resnet as nn
-	C.network = 'resnet50'
-elif options.network == 'vgg19':
-	from keras_frcnn import vgg19 as nn
-	C.network = 'vgg19'
-elif options.network == 'mobilenetv1':
-	from keras_frcnn import mobilenetv1 as nn
-	C.network = 'mobilenetv1'
-elif options.network == 'mobilenetv1_05':
-	from keras_frcnn import mobilenetv1_05 as nn
-	C.network = 'mobilenetv1_05'
-elif options.network == 'mobilenetv1_25':
-	from keras_frcnn import mobilenetv1_25 as nn
-	C.network = 'mobilenetv1_25'
-elif options.network == 'mobilenetv2':
-	from keras_frcnn import mobilenetv2 as nn
-	C.network = 'mobilenetv2'
-elif options.network == 'densenet':
-	from keras_frcnn import densenet as nn
-	C.network = 'densenet'
+# we will use resnet. may change to others
+if para['network'] == 'vgg16':
+    C.network = 'vgg16'
+    from keras_frcnn import vgg as nn
+elif para['network'] == 'resnet50':
+    from keras_frcnn import resnet as nn
+    C.network = 'resnet50'
+elif para['network'] == 'vgg19':
+    from keras_frcnn import vgg19 as nn
+    C.network = 'vgg19'
+elif para['network'] == 'mobilenetv1':
+    from keras_frcnn import mobilenetv1 as nn
+    C.network = 'mobilenetv1'
+elif para['network'] == 'mobilenetv1_05':
+    from keras_frcnn import mobilenetv1_05 as nn
+    C.network = 'mobilenetv1_05'
+elif para['network'] == 'mobilenetv1_25':
+    from keras_frcnn import mobilenetv1_25 as nn
+    C.network = 'mobilenetv1_25'
+elif para['network'] == 'mobilenetv2':
+    from keras_frcnn import mobilenetv2 as nn
+    C.network = 'mobilenetv2'
+elif para['network'] == 'densenet':
+    from keras_frcnn import densenet as nn
+    C.network = 'densenet'
 else:
-	print('Not a valid model')
-	raise ValueError
+    print('Not a valid model')
+    raise ValueError
 
 
 # check if weight path was passed via command line
-if options.input_weight_path:
-	C.base_net_weights = options.input_weight_path
+if para['input_weight_path']:
+    C.base_net_weights = para['input_weight_path']
 else:
 	# set the path to weights based on backend and model
 	C.base_net_weights = nn.get_weight_path()
@@ -127,7 +107,7 @@ base_net_weights = nn.get_weight_path()
 
 #### load images here ####
 # get voc images
-all_imgs, classes_count, class_mapping = get_data(options.train_path)
+all_imgs, classes_count, class_mapping = get_data(para['train_path'])
 
 print(classes_count)
 
@@ -144,7 +124,7 @@ print('Training images per class:')
 pprint.pprint(classes_count)
 print('Num classes (including bg) = {}'.format(len(classes_count)))
 
-config_output_filename = options.config_filename
+config_output_filename = para['config_filename']
 
 with open(config_output_filename, 'wb') as config_f:
 	pickle.dump(C,config_f)
@@ -199,7 +179,7 @@ model_rpn.summary()
 
 # write training misc here
 epoch_length = 100
-num_epochs = int(options.num_epochs)
+num_epochs = int(para['num_epochs'])
 iter_num = 0
 
 losses = np.zeros((epoch_length, 5))
@@ -214,33 +194,19 @@ print('Starting training')
 
 vis = True
 
-
-# start acutual training here
-#X, Y, img_data = next(data_gen_train)
-#
-##loss_rpn = model_rpn.train_on_batch(X, Y)
-#P_rpn = model_rpn.predict_on_batch(X)
-
-# you should enable NMS when you visualize your results.
-# NMS will filter out redundant predictions rpn gives, and will only leave the "best" predictions.
-# P_rpn = model_rpn.predict_on_batch(image)
-# R = roi_helpers.rpn_to_roi(P_rpn[0], P_rpn[1], C, K.image_dim_ordering(), use_regr=True, overlap_thresh=0.7, max_boxes=300)
-# X2, Y1, Y2, IouS = roi_helpers.calc_iou(R, img_data, C, class_mapping)
-# this will output the binding box axis. [x1,x2,y1,y2].
-
-Callbacks=keras.callbacks.ModelCheckpoint("./models/rpn/rpn."+options.network+".weights.{epoch:02d}-{loss:.2f}.hdf5", monitor='loss', verbose=1, save_best_only=True, save_weights_only=True, mode='auto', period=4)
+Callbacks=keras.callbacks.ModelCheckpoint("./models/rpn/" + para['network']+"_weights_{epoch:02d}-{loss:.2f}.hdf5", monitor='loss', verbose=1, save_best_only=True, save_weights_only=True, mode='auto', period=4)
 callback=[Callbacks]
 if len(val_imgs) == 0:
     # assuming you don't have validation data
     history = model_rpn.fit_generator(data_gen_train,
-                    epochs=options.num_epochs, steps_per_epoch = options.epoch_length, callbacks=callback)
+                    epochs = para['num_epochs'], steps_per_epoch = para['epoch_length'], callbacks = callback)
     loss_history = history.history["loss"]
 else:
     history = model_rpn.fit_generator(data_gen_train,
-                    epochs=options.num_epochs, validation_data=data_gen_val,
-                    steps_per_epoch=options.epoch_length, callbacks=callback, validation_steps=100)
+                    epochs = para['num_epochs'], validation_data = data_gen_val,
+                    steps_per_epoch = para['epoch_length'], callbacks=callback, validation_steps=100)
     loss_history = history.history["val_loss"]
 
 import numpy
 numpy_loss_history = numpy.array(loss_history)
-numpy.savetxt(options.network+"_rpn_loss_history.txt", numpy_loss_history, delimiter=",")
+numpy.savetxt(para['network'] + "_rpn_loss_history.txt", numpy_loss_history, delimiter = ",")
