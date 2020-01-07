@@ -50,7 +50,7 @@ def get_weight_path():
         return
     else:
         # path to the weights you want to use.
-        return './pretrain/mobilenet_v2_weights_tf_dim_ordering_tf_kernels_1.0_224.h5'
+        return './pretrain/mobilenet_1_0_224_tf.h5'
 
 def _make_divisible(v, divisor, min_value=None):
     if min_value is None:

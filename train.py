@@ -24,13 +24,12 @@ set_session(tf.Session(config=config2))
 
 sys.setrecursionlimit(40000)
 
-para = {'train_path': 'C:\\Users\\kctoa\\Desktop\\VScode\\AI_Project\\PokemonDataset\\Train_face\\csv.txt', 
+para = {'train_path': 'C:\\Users\\kctoa\\Desktop\\VScode\\AI_Project\\PokemonDataset_new\\data\\Images', 
         'input_weight_path': 'C:\\Users\\kctoa\\Desktop\\VScode\\frcnn-from-scratch-with-keras\\pretrain\\resnet50_tf.h5',
         'rpn_weight_path': 'C:\\Users\\kctoa\\Desktop\\VScode\\frcnn-from-scratch-with-keras\\pretrain\\resnet50_tf.h5',
-        'output_weight_path': './pokemon_model_frcnn_simple.hdf5',
-        'load': 'C:\\Users\\kctoa\\Desktop\\VScode\\frcnn-from-scratch-with-keras\\models\\resnet50\\pokemon.hdf5',
+        'load': None,
         'horizontal_flips': True, 'vertical_flips': True, 'rot_90': True, 		
-        'input_size': 450, 'dataset': 'pokemon', 'cat': None, 'parser': 'simple', 'config_filename': 'config.pickle', 
+        'input_size': 450, 'dataset': 'pokemon_new', 'cat': None, 'parser': 'simple', 'config_filename': 'config.pickle', 
         'network': 'resnet50', 'num_rois': 10, 'num_epochs': 10000, 'optimizers': 'Adam', 'epoch_length': 1000, 'lr': 1e-4}
 
 # mkdir to save models.
