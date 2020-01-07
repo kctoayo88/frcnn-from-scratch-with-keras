@@ -14,7 +14,10 @@ Tested with Tensorflow==1.12.0 and Keras 2.2.4.
 
 ## How to use?
 
-### 1. clone the repo
+### 1. Clone the repo
+```
+git clone https://github.com/kctoayo88/video_faster_rcnn_keras.git
+```
 
 ### 2. Install requirements, and make sure that you have Keras installed.
 ```
